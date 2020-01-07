@@ -29,23 +29,23 @@ public:
     {
         if (p1 == std::get<0>(a2t))
             return callWithArgsExpanded<p1>(
-                ints_up_to<std::tuple_size_v<ArgsAsTuple>>(), caller, args);
+                std::make_index_sequence<std::tuple_size_v<ArgsAsTuple>>(), caller, args);
         else
             return run(
                 typename std::integer_sequence<P, rest...>(), a2t, caller, args);
     }
 
 private:
-    template <P p, class Caller, class ArgsAsTuple, int... S>
+    template <P p, class Caller, class ArgsAsTuple, std::size_t... S>
     static auto callWithArgsExpanded(
-        int_seq<S...>, const Caller& caller, const ArgsAsTuple& args)
+        std::integer_sequence<std::size_t, S...>, const Caller& caller, const ArgsAsTuple& args)
     {
-        return caller.template operator()<static_cast<int>(p)>(
+        return caller.template operator()<P, p>(
             std::get<S>(args)...);
     }
 };
 
-template <class R, class OriginalCaller, int UnresolvedCount, int... resolved>
+template <class R, class OriginalCaller, int UnresolvedCount, class... resolved>
 struct Caller
 {
     explicit Caller(const R& resolver, const OriginalCaller& originalCaller) :
@@ -54,7 +54,7 @@ struct Caller
     }
     const R& m_resolver;
     const OriginalCaller& m_originalCaller;
-    template <int p, class... Args>
+    template <class P, P p, class... Args>
     auto operator()(Args... args) const
     {
         auto nextResolver = m_resolver.next();
@@ -63,12 +63,12 @@ struct Caller
             OriginalCaller,
             UnresolvedCount - 1,
             resolved...,
-            p>(nextResolver, m_originalCaller);
+            std::integral_constant<P,p>>(nextResolver, m_originalCaller);
         return nextResolver(nextCaller, args...);
     }
 };
 
-template <class R, class OriginalCaller, int... resolved>
+template <class R, class OriginalCaller, class... resolved>
 struct Caller<R, OriginalCaller, 0, resolved...>
 {
     explicit Caller(const R& resolver, const OriginalCaller& originalCaller) :
@@ -80,7 +80,7 @@ struct Caller<R, OriginalCaller, 0, resolved...>
     template <class... Args>
     auto operator()(Args... args) const
     {
-        return m_originalCaller.template operator()<resolved...>(args...);
+        return m_originalCaller.template operator()<resolved::value...>(args...);
     }
 };
 
