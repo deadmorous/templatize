@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(templatize LANGUAGES CXX)
+project(templatize_package)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
-add_executable(${PROJECT_NAME} main.cpp tuple_util.h resolve_template_args.h)
+add_subdirectory(examples)
+
