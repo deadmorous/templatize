@@ -55,7 +55,7 @@ struct Caller
     const R& m_resolver;
     const OriginalCaller& m_originalCaller;
     template <class P, P p, class... Args>
-    auto operator()(Args... args) const
+    auto operator()(Args&&... args) const
     {
         auto nextResolver = m_resolver.next();
         auto nextCaller = Caller<
@@ -64,7 +64,7 @@ struct Caller
             UnresolvedCount - 1,
             resolved...,
             std::integral_constant<P,p>>(nextResolver, m_originalCaller);
-        return nextResolver(nextCaller, args...);
+        return nextResolver(nextCaller, std::forward<Args>(args)...);
     }
 };
 
@@ -78,9 +78,9 @@ struct Caller<R, OriginalCaller, 0, resolved...>
     const R& m_resolver;
     const OriginalCaller& m_originalCaller;
     template <class... Args>
-    auto operator()(Args... args) const
+    auto operator()(Args&&... args) const
     {
-        return m_originalCaller.template operator()<resolved::value...>(args...);
+        return m_originalCaller.template operator()<resolved::value...>(std::forward<Args>(args)...);
     }
 };
 
@@ -94,7 +94,7 @@ struct Resolver<>
     {
     }
     template <class C, class... Args>
-    auto operator()(const C& caller, const Args... args)
+    auto operator()(const C& caller, Args&&... args)
     {
         return caller(args...);
     }
@@ -110,13 +110,13 @@ struct Resolver<TemplateArg1, TemplateArgsRest...>
     }
     A2T m_a2t;
     template <class C, class... Args>
-    auto operator()(const C& caller, const Args... args)
+    auto operator()(const C& caller, Args&&... args)
     {
         return SingleTemplateArgResolver<P1>::run(
             TemplateArg1(),
             std::get<0>(m_a2t),
             caller,
-            std::make_tuple(args...));
+            std::forward_as_tuple(args...));
     }
     auto next() const
     {
@@ -134,13 +134,13 @@ struct resolve_template_args
     resolve_template_args(
         const std::tuple<typename TemplateArgs::value_type...>& a2t,
         const OriginalCaller& originalCaller,
-        Args... args)
+        Args&&... args)
     {
         using namespace resolve_tpl_args::detail;
         using R = Resolver<TemplateArgs...>;
         R resolver(a2t);
         Caller<R, OriginalCaller, sizeof...(TemplateArgs)> caller(
             resolver, originalCaller);
-        resolver(caller, args...);
+        resolver(caller, std::forward<Args>(args)...);
     }
 };
